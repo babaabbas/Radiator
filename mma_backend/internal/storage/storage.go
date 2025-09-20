@@ -1,6 +1,12 @@
 package storage
 
+import "mma_api/internal/types"
+
 type Storage interface {
-	Create_User() error
-	User_Login() error
+	CreateUser(name, role, email, password string) (*types.User, error)
+	UpdateUser(id int, name, role, email, password string) (*types.User, error)
+	GetUsers() ([]types.User, error)
+	GetUserByID(id int) (*types.User, error)
+	DeleteUser(id int) error
+	GetUserByEmail(email string) (*types.User, error)
 }

@@ -6,8 +6,8 @@ import (
 	"log"
 	"log/slog"
 	"mma_api/internal/config"
+	"mma_api/internal/http/handlers/auth"
 	"mma_api/internal/storage/postgres"
-	"mma_api/internal/utils/response"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,18 +22,21 @@ func main() {
 	if err != nil {
 		fmt.Print("yo the postgres is not working", err)
 	}
-	pg.CreateUser("cool", "worker", "abs@gmail.com", "ols")
-	fmt.Println(pg)
+	user, err := pg.GetUserByEmail("abs@gmail.com")
+	fmt.Println(user)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	//setup routers
 	router := http.NewServeMux()
+	router.HandleFunc("POST /api/register", auth.Register_handler(pg))
+	router.HandleFunc("POST /api/login", auth.Login_handler(pg))
+	router.HandleFunc("GET /api/users", auth.GetUsersHandler(pg))
+	router.HandleFunc("GET /api/users/{id}", auth.GetUserByIDHandler(pg))
+	router.HandleFunc("DELETE /api/users/{id}", auth.DeleteUserByIDHandler(pg))
+	router.HandleFunc("PUT /api/users/{id}", auth.UpdateUserHandler(pg))
 
-	router.HandleFunc("GET /api/man", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "Hello, this is a test response from /api/man")
-		response.WriteJson(w, 200, "yoo")
-	})
 	//setup server
 	server := http.Server{
 		Addr:    cfg.Http_Server.Addr,

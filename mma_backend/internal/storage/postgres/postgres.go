@@ -118,13 +118,13 @@ func New(cfg *config.Config) (*Postgres, error) {
 
 }
 
+// ------------------users--------Radiator-------------------------//
 func (p *Postgres) CreateUser(name, role, email, password string) (*types.User, error) {
 	query := `
 		INSERT INTO users (name, role, email, password_hash, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NOW(), NOW())
 		RETURNING id, name, role, email, password_hash, created_at, updated_at
 	`
-
 	var newUser types.User
 	err := p.db.QueryRow(query, name, role, email, password).Scan(
 		&newUser.ID,
@@ -141,3 +141,139 @@ func (p *Postgres) CreateUser(name, role, email, password string) (*types.User, 
 
 	return &newUser, nil
 }
+
+func (p *Postgres) UpdateUser(id int, name, role, email, password string) (*types.User, error) {
+	query := `
+		UPDATE users
+		SET name = $1,
+		    role = $2,
+		    email = $3,
+		    password_hash = $4,
+		    updated_at = NOW()
+		WHERE id = $5
+		RETURNING id, name, role, email, password_hash, created_at, updated_at
+	`
+
+	var updatedUser types.User
+	err := p.db.QueryRow(query, name, role, email, password, id).Scan(
+		&updatedUser.ID,
+		&updatedUser.Name,
+		&updatedUser.Role,
+		&updatedUser.Email,
+		&updatedUser.PasswordHash,
+		&updatedUser.CreatedAt,
+		&updatedUser.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user with id %d not found", id)
+		}
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return &updatedUser, nil
+}
+
+func (p *Postgres) GetUsers() ([]types.User, error) {
+	query := `SELECT id, name, role, email, password_hash, created_at, updated_at FROM users`
+
+	rows, err := p.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []types.User
+
+	for rows.Next() {
+		var u types.User
+		if err := rows.Scan(
+			&u.ID,
+			&u.Name,
+			&u.Role,
+			&u.Email,
+			&u.PasswordHash,
+			&u.CreatedAt,
+			&u.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	return users, nil
+}
+func (p *Postgres) GetUserByID(id int) (*types.User, error) {
+	query := `SELECT id, name, role, email, password_hash, created_at, updated_at
+	          FROM users WHERE id = $1`
+
+	var u types.User
+	err := p.db.QueryRow(query, id).Scan(
+		&u.ID,
+		&u.Name,
+		&u.Role,
+		&u.Email,
+		&u.PasswordHash,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user with id %d not found", id)
+		}
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	return &u, nil
+}
+
+func (p *Postgres) DeleteUser(id int) error {
+	query := `DELETE FROM users WHERE id = $1`
+
+	result, err := p.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no user found with id %d", id)
+	}
+
+	return nil
+}
+
+func (p *Postgres) GetUserByEmail(email string) (*types.User, error) {
+	query := `SELECT id, name, role, email, password_hash, created_at, updated_at
+	          FROM users
+	          WHERE email = $1`
+
+	var u types.User
+	err := p.db.QueryRow(query, email).Scan(
+		&u.ID,
+		&u.Name,
+		&u.Role,
+		&u.Email,
+		&u.PasswordHash,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user with email %s not found", email)
+		}
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	return &u, nil
+}
+
+//------------------users--------Radiator-------------------------//
