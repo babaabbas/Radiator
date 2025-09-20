@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"mma_api/internal/config"
 	"mma_api/internal/http/handlers/auth"
+	"mma_api/internal/http/handlers/product"
 	"mma_api/internal/storage/postgres"
 	"net/http"
 	"os"
@@ -22,7 +23,7 @@ func main() {
 	if err != nil {
 		fmt.Print("yo the postgres is not working", err)
 	}
-	user, err := pg.GetUserByEmail("abs@gmail.com")
+	user, err := pg.GetBoM(1)
 	fmt.Println(user)
 	if err != nil {
 		fmt.Println(err)
@@ -36,6 +37,11 @@ func main() {
 	router.HandleFunc("GET /api/users/{id}", auth.GetUserByIDHandler(pg))
 	router.HandleFunc("DELETE /api/users/{id}", auth.DeleteUserByIDHandler(pg))
 	router.HandleFunc("PUT /api/users/{id}", auth.UpdateUserHandler(pg))
+	router.HandleFunc("GET /api/products/", product.GetProductsHandler(pg))
+	router.HandleFunc("GET /api/products/{id}", product.GetProductByIDHandler(pg))
+	router.HandleFunc("POST /api/products/", product.CreateProductHandler(pg))
+	router.HandleFunc("POST /api/products/{id}/bom", product.CreateBoMHandler(pg))
+	router.HandleFunc("GET /api/products/{id}/bom", product.GetBoMHandler(pg))
 
 	//setup server
 	server := http.Server{

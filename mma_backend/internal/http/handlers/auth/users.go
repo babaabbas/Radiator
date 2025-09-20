@@ -287,3 +287,26 @@ func UpdateUserHandler(storage *postgres.Postgres) http.HandlerFunc {
 		})
 	}
 }
+
+func GetProductsHandler(storage *postgres.Postgres) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			resp := response.GeneralError(http.ErrNotSupported)
+			_ = response.WriteJson(w, http.StatusMethodNotAllowed, resp)
+			return
+		}
+
+		products, err := storage.GetProducts()
+		if err != nil {
+			resp := response.GeneralError(err)
+			_ = response.WriteJson(w, http.StatusInternalServerError, resp)
+			return
+		}
+
+		// Send JSON response
+		_ = response.WriteJson(w, http.StatusOK, map[string]interface{}{
+			"custom_status": response.Status_Ok,
+			"data":          products,
+		})
+	}
+}

@@ -119,6 +119,7 @@ func New(cfg *config.Config) (*Postgres, error) {
 }
 
 // ------------------users--------Radiator-------------------------//
+
 func (p *Postgres) CreateUser(name, role, email, password string) (*types.User, error) {
 	query := `
 		INSERT INTO users (name, role, email, password_hash, created_at, updated_at)
@@ -277,3 +278,176 @@ func (p *Postgres) GetUserByEmail(email string) (*types.User, error) {
 }
 
 //------------------users--------Radiator-------------------------//
+
+// -----------------products-------Radiator------------------------//
+func (p *Postgres) CreateProduct(name, description, category, unit string) (*types.Product, error) {
+	query := `
+        INSERT INTO products (name, description, category, unit)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, name, description, category, unit, created_at, updated_at
+    `
+
+	var product types.Product
+	err := p.db.QueryRow(query, name, description, category, unit).Scan(
+		&product.ID,
+		&product.Name,
+		&product.Description,
+		&product.Category,
+		&product.Unit,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create product: %w", err)
+	}
+
+	return &product, nil
+}
+func (p *Postgres) GetProducts() ([]types.Product, error) {
+	query := `
+        SELECT id, name, description, category, unit, created_at, updated_at
+        FROM products
+        ORDER BY id ASC
+    `
+
+	rows, err := p.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch products: %w", err)
+	}
+	defer rows.Close()
+
+	var products []types.Product
+
+	for rows.Next() {
+		var prod types.Product
+		err := rows.Scan(
+			&prod.ID,
+			&prod.Name,
+			&prod.Description,
+			&prod.Category,
+			&prod.Unit,
+			&prod.CreatedAt,
+			&prod.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("could not scan product: %w", err)
+		}
+		products = append(products, prod)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error after iterating rows: %w", err)
+	}
+
+	return products, nil
+}
+func (p *Postgres) GetProductById(id int) (*types.Product, error) {
+	query := `
+		SELECT id, name, description, category, unit, created_at, updated_at
+		FROM products
+		WHERE id = $1
+	`
+
+	var product types.Product
+	err := p.db.QueryRow(query, id).Scan(
+		&product.ID,
+		&product.Name,
+		&product.Description,
+		&product.Category,
+		&product.Unit,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("product with id %d not found", id)
+		}
+		return nil, fmt.Errorf("could not fetch product: %w", err)
+	}
+
+	return &product, nil
+}
+func (p *Postgres) CreateBoM(productID, componentID int, quantity float64, operationName string) (*types.BoM, error) {
+
+	var exists bool
+	err := p.db.QueryRow("SELECT EXISTS(SELECT 1 FROM products WHERE id = $1)", productID).Scan(&exists)
+	if err != nil {
+		return nil, fmt.Errorf("error checking product existence: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("product with id %d does not exist", productID)
+	}
+
+	err = p.db.QueryRow("SELECT EXISTS(SELECT 1 FROM products WHERE id = $1)", componentID).Scan(&exists)
+	if err != nil {
+		return nil, fmt.Errorf("error checking component existence: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("component product with id %d does not exist", componentID)
+	}
+
+	query := `
+		INSERT INTO bom (product_id, component_id, quantity, operation_name)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, product_id, component_id, quantity, operation_name, created_at, updated_at
+	`
+
+	var bom types.BoM
+	err = p.db.QueryRow(query, productID, componentID, quantity, operationName).Scan(
+		&bom.ID,
+		&bom.ProductID,
+		&bom.ComponentID,
+		&bom.Quantity,
+		&bom.OperationName,
+		&bom.CreatedAt,
+		&bom.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not create bom: %w", err)
+	}
+
+	return &bom, nil
+}
+func (p *Postgres) GetBoM(productID int) ([]types.BoM, error) {
+	query := `
+		SELECT id, product_id, component_id, quantity, operation_name, created_at, updated_at
+		FROM bom
+		WHERE product_id = $1
+	`
+
+	rows, err := p.db.Query(query, productID)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch BoM: %w", err)
+	}
+	defer rows.Close()
+
+	var boms []types.BoM
+	for rows.Next() {
+		var bom types.BoM
+		if err := rows.Scan(
+			&bom.ID,
+			&bom.ProductID,
+			&bom.ComponentID,
+			&bom.Quantity,
+			&bom.OperationName,
+			&bom.CreatedAt,
+			&bom.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("could not scan bom row: %w", err)
+		}
+		boms = append(boms, bom)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	return boms, nil
+}
+
+//-----------------products-------Radiator------------------------//
+
+//-----------------MO------------Radiator-------------------------//
+
+//-----------------MO------------Radiator-------------------------//
