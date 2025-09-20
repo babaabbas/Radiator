@@ -1,3 +1,4 @@
 env: "dev"
+conn_str: "host=localhost port=5432 user=postgres password=cool dbname=mma sslmode=disable"
 http_server:
   address: "0.0.0.0:8080"

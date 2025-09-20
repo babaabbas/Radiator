@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"mma_api/internal/config"
+	"mma_api/internal/storage/postgres"
 	"mma_api/internal/utils/response"
 	"net/http"
 	"os"
@@ -17,12 +18,17 @@ import (
 func main() {
 	//config
 	cfg := *config.Must_Load()
+	pg, err := postgres.New(&cfg)
+	if err != nil {
+		fmt.Print("yo the postgres is not working", err)
+	}
+	pg.CreateUser("cool", "worker", "abs@gmail.com", "ols")
+	fmt.Println(pg)
 
 	//setup routers
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /api/man", func(w http.ResponseWriter, r *http.Request) {
-
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Hello, this is a test response from /api/man")
@@ -45,7 +51,7 @@ func main() {
 	slog.Info("server is shutting down")
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
-	err := server.Shutdown(ctx)
+	err = server.Shutdown(ctx)
 	if err != nil {
 		slog.Info("server not closing ")
 	}

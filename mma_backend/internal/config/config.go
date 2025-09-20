@@ -9,8 +9,8 @@ import (
 )
 
 type Config struct {
-	Env string `yaml:"env" env-required:"true"`
-	// Conn_Str    string      `yaml:"conn_str" env-required:"true"`
+	Env         string      `yaml:"env" env-required:"true"`
+	Conn_Str    string      `yaml:"conn_str" env-required:"true"`
 	Http_Server Http_Server `yaml:"http_server"`
 }
 
